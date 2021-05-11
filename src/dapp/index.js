@@ -15,6 +15,24 @@ import './flightsurety.css';
             console.log(error,result);
             display('Operational Status', 'Check if contract is operational', [ { label: 'Operational Status', error: error, value: result} ]);
         });
+
+        // Add airline transaction
+        DOM.elid('add-airline').addEventListener('click', () => {
+            let newAirline = DOM.elid('airline-add').value;
+            // Write transaction
+            contract.registerAirline(newAirline, (error, result) => {
+                console.log(error, result);
+            });
+        });
+
+        // Pay for airline transaction
+        DOM.elid('pay-airline').addEventListener('click', () => {
+            let airline = DOM.elid('airline-pay').value;
+            // Write transaction
+            contract.payForAirline(airline, (error, result) => {
+                console.log(error, result);
+            });
+        });
     
 
         // User-submitted transaction
@@ -24,7 +42,7 @@ import './flightsurety.css';
             contract.fetchFlightStatus(flight, (error, result) => {
                 display('Oracles', 'Trigger oracles', [ { label: 'Fetch Flight Status', error: error, value: result.flight + ' ' + result.timestamp} ]);
             });
-        })
+        });
     
     });
     
@@ -46,10 +64,3 @@ function display(title, description, results) {
     displayDiv.append(section);
 
 }
-
-
-
-
-
-
-

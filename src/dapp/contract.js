@@ -6,13 +6,14 @@ export default class Contract {
     constructor(network, callback) {
 
         let config = Config[network];
-        this.web3 = new Web3(new Web3.providers.HttpProvider(config.url));
+        this.web3 = new Web3(config.url);
         this.flightSuretyApp = new this.web3.eth.Contract(FlightSuretyApp.abi, config.appAddress);
         this.initialize(callback);
         this.owner = null;
         this.airlines = [];
         this.passengers = [];
     }
+
 
     initialize(callback) {
         this.web3.eth.getAccounts((error, accts) => {
@@ -38,6 +39,23 @@ export default class Contract {
        self.flightSuretyApp.methods
             .isOperational()
             .call({ from: self.owner}, callback);
+    }
+
+    // Function for calling the "registerAirline" function in FlightSurityApp contract
+    registerAirline(newAirline, callback) {
+        let self = this;
+        self.flightSuretyApp.methods
+            .registerAirline(newAirline)
+            .send({from: self.owner}, callback);
+     }
+
+    // Function for calling the "registerAirline" function in FlightSurityApp contract
+    payForAirline(airline, callback) {
+        let self = this;
+        const fee = 10000000000000000000;
+        self.flightSuretyApp.methods
+            .payAirlineFee(airline)
+            .send({from: self.owner, value: fee}, callback);
     }
 
     fetchFlightStatus(flight, callback) {
