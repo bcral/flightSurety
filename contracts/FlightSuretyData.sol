@@ -12,14 +12,23 @@ contract FlightSuretyData {
     address private contractOwner;                               // Account used to deploy contract
     bool private operational;                                    // Blocks all state changes throughout the contract if false
     bool private consensus;
+    uint private storedFunds;
 
     uint256 public airlineCount;
     struct Airline {
         bool registered;
+        bool queued;
         bool paid;
         uint votes;
     }
     mapping(address => Airline) private airlines;
+
+    struct Policy {
+        string flightNumber;
+        uint amount;
+        address owner;
+    }
+    mapping(address => Policy) private policies;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -35,14 +44,12 @@ contract FlightSuretyData {
         {
             contractOwner = msg.sender;
             operational = true;
-
-            //make the owner an airline, just to make everything smoother
-            airlines[contractOwner].registered = true;
-            airlines[contractOwner].paid = true;
             airlines[firstAirline].registered = true;
+            airlines[firstAirline].queued = true;
             airlines[firstAirline].paid = true;
             airlineCount++;
             consensus = false;
+            storedFunds = 0;
         }
 
     /********************************************************************************************/
@@ -69,12 +76,6 @@ contract FlightSuretyData {
     modifier requireContractOwner()
         {
             require(msg.sender == contractOwner, "Caller is not contract owner");
-            _;
-        }
-
-    modifier requirePayment(address _address)
-        {
-            require(airlines[_address].paid);
             _;
         }
 
@@ -112,20 +113,10 @@ contract FlightSuretyData {
             return airlineCount;
         }
     
-    function checkAirline (address _address) public view returns (bool)
-        {
-            return airlines[_address].registered;
-        }
-
     function isAirline(address _address) view public returns (bool) 
         {   
             bool check = airlines[_address].registered;
             return check;
-        }
-
-    function isPaid(address _address) view public returns (bool) 
-        {   
-            return airlines[_address].paid;
         }
 
     function checkConsensus() private returns (bool) 
@@ -134,6 +125,11 @@ contract FlightSuretyData {
             if (count > 3) {
                 return consensus = true;
             }
+        }
+
+    function checkFunds() public view returns (uint) 
+        {
+            return storedFunds;
         }
 
     /********************************************************************************************/
@@ -148,34 +144,39 @@ contract FlightSuretyData {
     function registerAirline (address newAirline)
         external
         requireIsOperational
-        returns(uint)
+        returns(uint256 votes)
         {
+            votes = airlines[newAirline].votes;
+
             if (consensus) {
                 //place vote
-                airlines[newAirline].votes++;
-                if (airlines[newAirline].votes >= airlineCount.div(2)) {
-                    airlines[newAirline].registered = true;
-                    airlineCount++;
+                votes++;
+                if (votes >= airlineCount.div(2)) {
+                    airlines[newAirline].queued = true;
                 }
+                return(votes);
             } else {
-                airlines[newAirline].registered = true;
-                airlineCount++;
+                airlines[newAirline].queued = true;
+                checkConsensus();
+                return(votes);
             }
-            checkConsensus();
         }
-
 
     /**
     * @dev Pay for an airline in the registration queue
     *      Can only be called from FlightSuretyApp contract
     *
     */   
-    function payForAirline (address newAirline)
+    function confirmAirline (address newAirline)
         external
-        payable
         requireIsOperational
+        returns(bool)
         {
-            airlines[newAirline].paid = true;
+            if(airlines[newAirline].paid && airlines[newAirline].queued) {
+                airlines[newAirline].registered = true;
+                airlineCount++;
+            }
+            return airlines[newAirline].registered;
         }
 
 
@@ -183,11 +184,17 @@ contract FlightSuretyData {
     * @dev Buy insurance for a flight
     *
     */   
-    function buy ()
+    function buy (string flight, address owner, uint amount)
         external
         payable
+        requireIsOperational
+        returns(bool success)
         {
-
+            policies[owner].flightNumber = flight;
+            policies[owner].owner = owner;
+            policies[owner].amount = amount;
+            success = true;
+            return(success);
         }
 
     /**
@@ -217,11 +224,12 @@ contract FlightSuretyData {
     *      resulting in insurance payouts, the contract should be self-sustaining
     *
     */   
-    function fund ()
+    function fund (address newAirline, uint funds)
         public
         payable
         {
-
+            airlines[newAirline].paid = true;
+            storedFunds += funds;
         }
 
     function getFlightKey
@@ -242,10 +250,12 @@ contract FlightSuretyData {
     *
     */
     function() 
-        external 
+        external
         payable 
         {
-            fund();
+            // I guess since we have to call this here, throw in some arbitrary 
+            // address for the funder - in this case the contract owner.
+            fund(contractOwner, msg.value);
         }
 
 

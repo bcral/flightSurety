@@ -88,6 +88,45 @@ contract('Flight Surety Tests', async (accounts) => {
     assert.equal(result, false, "Airline should not be able to register another airline if it hasn't provided funding");
 
   });
- 
+
+  it('(caller) airline was not registered just because it was paid for', async () => {
+    
+    // ARRANGE
+    let newAirline = accounts[2];
+
+    // ACT
+    try {
+        await config.flightSuretyApp.payAirlineFee(newAirline, {from: config.testAddresses[2], value: 10000000000000000000});
+    }
+    catch(e) {
+
+    }
+    let result = await config.flightSuretyData.isAirline.call(newAirline); 
+
+    // ASSERT
+    assert.equal(result, false, "Airline should not be able to be registered if it isn't paid for");
+
+  });
+
+  it('(airline) registers another Airline using registerAirline() and funds it with payAirlineFee()', async () => {
+    
+    // ARRANGE
+    let newAirline = accounts[3];
+
+    // ACT
+    try {
+        await config.flightSuretyApp.registerAirline(newAirline, {from: config.firstAirline});
+        await config.flightSuretyApp.payAirlineFee(newAirline, {from: config.firstAirline, value: 10000000000000000000});
+    }
+    catch(e) {
+
+    }
+    let result = await config.flightSuretyData.isAirline.call(newAirline); 
+    let result2 = await config.flightSuretyData.checkFunds.call();
+
+    // ASSERT
+    assert.equal(result, true, "Airline should be able to register another airline and fund it");
+    assert.equal(result2, 10000000000000000000, "Funds should be transfered to Data Contract's 'storeFunds'");
+  });
 
 });

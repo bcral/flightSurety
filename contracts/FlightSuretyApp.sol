@@ -67,13 +67,7 @@ contract FlightSuretyApp {
 
     modifier requireAirline()
         {
-            require(data.checkAirline(msg.sender));
-            _;
-        }
-
-    modifier requirePayment()
-        {
-            require(msg.value >= 10 ether);
+            require(data.isAirline(msg.sender));
             _;
         }
 
@@ -117,12 +111,13 @@ contract FlightSuretyApp {
 
     function registerAirline (address newAirline)
         external
+        requireIsOperational
         requireAirline
         returns(bool success, uint256 votes)
         {
             //place vote
-            data.registerAirline(newAirline);
-
+            votes = data.registerAirline(newAirline);
+            success = data.confirmAirline(newAirline);
             return (success, votes);
         }
 
@@ -134,20 +129,29 @@ contract FlightSuretyApp {
     function payAirlineFee (address newAirline)
         external
         payable
-        requirePayment
+        requireIsOperational
+        returns(bool success)
         {
-            data.payForAirline(newAirline);
+            require(msg.value >= 10 ether);
+            data.fund(newAirline, msg.value);
+            success = data.confirmAirline(newAirline);
+
+            return(success);
         }
 
    /**
     * @dev Register a future flight for insuring.
     *
     */  
-    function registerFlight ()
+    function registerFlight (string flight)
         external
-        pure
+        payable
+        requireIsOperational
+        returns(bool success)
         {
-
+            require(msg.value <= 1 ether);
+            success = data.buy(flight, msg.sender, msg.value);
+            return(success);
         }
     
    /**
@@ -362,8 +366,10 @@ contract FlightSuretyApp {
 
 contract FlightSurityData {
     function isOperational () public view returns(bool);
-    function checkAirline (address _address) public view  returns (bool);
+    function isAirline (address) public view  returns (bool);
     function countAirlines () public view returns (uint);
-    function payForAirline (address newAirline) external payable;
-    function registerAirline (address newAirline) external returns(uint);
+    function fund (address, uint) external payable;
+    function registerAirline (address) external returns(uint256);
+    function confirmAirline (address) external returns(bool);
+    function buy (string, address, uint) external payable returns(bool);
 }
