@@ -42,15 +42,33 @@
                     <h2>New Flight</h2>
                 </div>
                 <div class="row top-20">
-                    <label class="form" for="insurance-payment">Insurance Payment(up to 1 ETH)</label> 
-                    <input type="text" id="insurance-payment"> 
-
                     <label class="form" for="new-flight-number">Flight Number</label> 
                     <input type="text" id="new-flight-number"> <btn class="btn btn-primary" id="add-flight">Add Flight</btn>
 
                 </div>
             </div>
 
+            <div id="flight-wrapper">
+                <div class="top-20">
+                    <h2>Registered Flights</h2>
+                </div>
+                <div class="row top-20">
+                    <btn class="btn btn-primary" id="get-flights">Get Flights</btn>
+                </div>
+            </div>
+
+            <div class="display-wrapper">
+                <div class="top-20">
+                    <h2>New Insurance Policy</h2>
+                </div>
+                <div class="row top-20">
+                    <label class="form" for="insurance-payment">Insurance Payment(up to 1 ETH)</label> 
+                    <input type="text" id="insurance-payment"> 
+
+                    <label class="form" for="insurance-flight-number">Flight Key</label> 
+                    <input type="text" id="insurance-flight-number"> <btn class="btn btn-primary" id="add-policy">Add Policy</btn>
+                </div>
+            </div>
 
             <div class="display-wrapper">
                 <div class="top-20">
@@ -58,6 +76,15 @@
                 </div>
                 <div class="row top-20">
                     <label class="form">Flight</label> <input type="text" id="flight-number"> <btn class="btn btn-primary" id="submit-oracle">Submit to Oracles</btn>
+                </div>
+            </div>
+
+            <div class="display-wrapper">
+                <div class="top-20">
+                    <h2>Withdraw Funds</h2>
+                </div>
+                <div class="row top-20">
+                    <btn class="btn btn-primary" id="withdraw">Withdraw</btn>
                 </div>
             </div>
         </div>

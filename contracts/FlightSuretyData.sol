@@ -24,11 +24,16 @@ contract FlightSuretyData {
     mapping(address => Airline) private airlines;
 
     struct Policy {
-        string flightNumber;
-        uint amount;
+        bytes32 key;
+        string flight;
+        uint256 amount;
         address owner;
+        uint256 credit;
     }
     mapping(address => Policy) private policies;
+
+    mapping(bytes32 => bool) private credits;
+
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -78,6 +83,15 @@ contract FlightSuretyData {
             require(msg.sender == contractOwner, "Caller is not contract owner");
             _;
         }
+        /**
+    * @dev Modifier that requires the flight key to have been credited from Oracle review
+    */
+    modifier requireCredit(address _address) 
+        {
+            bytes32 key = policies[_address].key;
+            require(credits[key] == true, "There is no credit for this flight, on this account");
+            _;
+        }
 
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
@@ -116,6 +130,12 @@ contract FlightSuretyData {
     function isAirline(address _address) view public returns (bool) 
         {   
             bool check = airlines[_address].registered;
+            return check;
+        }
+
+    function isCustomer(address _address) view public returns (address) 
+        {   
+            address check = policies[_address].owner;
             return check;
         }
 
@@ -184,40 +204,45 @@ contract FlightSuretyData {
     * @dev Buy insurance for a flight
     *
     */   
-    function buy (string flight, address owner, uint amount)
+    function buy (bytes32 key, string flight, address owner, uint amount)
         external
         payable
         requireIsOperational
-        returns(bool success)
         {
-            policies[owner].flightNumber = flight;
+            policies[owner].key = key;
+            policies[owner].flight = flight;
             policies[owner].owner = owner;
             policies[owner].amount = amount;
-            success = true;
-            return(success);
+            storedFunds += amount;
         }
 
     /**
      *  @dev Credits payouts to insurees
     */
-    function creditInsurees ()
+    function creditInsurees (bytes32 key)
         external
-        pure
+        requireIsOperational
         {
-            
+            credits[key] = true;
         }
-        
 
     /**
-     *  @dev Transfers eligible payout funds to insuree
-     *
+     *  @dev Pays insurees for loss
     */
-    function pay ()
+    function withdraw (address passenger)
         external
-        pure
+        requireIsOperational
+        requireCredit(passenger)
         {
-
+            require(policies[passenger].owner == passenger);
+            require(policies[passenger].amount > 0);
+            uint256 deposit = policies[passenger].amount;
+            uint256 credit = deposit.mul(3).div(2);
+            require(storedFunds >= credit);
+            policies[passenger].amount = 0;
+            passenger.transfer(credit);
         }
+        
 
    /**
     * @dev Initial funding for the insurance. Unless there are too many delayed flights
@@ -227,6 +252,7 @@ contract FlightSuretyData {
     function fund (address newAirline, uint funds)
         public
         payable
+        requireIsOperational
         {
             airlines[newAirline].paid = true;
             storedFunds += funds;

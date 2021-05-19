@@ -28,13 +28,19 @@ contract FlightSuretyApp {
 
     struct Flight {
         bool isRegistered;
+        string flight;
         uint8 statusCode;
         uint256 updatedTimestamp;        
         address airline;
     }
     mapping(bytes32 => Flight) private flights;
+    bytes32[] registeredFlights;
+    // instance of Data contract
     FlightSurityData data;
-    address[] public airlineQueue;
+
+    ////////////////////////////////////// EVENTS ////////////////////////////////////
+
+    event FlightAdded(address airline, string flight, uint256 timestamp, bytes32 key);
 
  
     /********************************************************************************************/
@@ -98,6 +104,14 @@ contract FlightSuretyApp {
             return data.isOperational();  // Modify to call data contract's status
         }
 
+    function returnFlightsLength ()
+        public
+        view
+        returns(uint) 
+        {
+            return registeredFlights.length;
+        }
+
 
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
@@ -130,28 +144,71 @@ contract FlightSuretyApp {
         external
         payable
         requireIsOperational
-        returns(bool success)
         {
-            require(msg.value >= 10 ether);
+            require(msg.value >= 10 ether, "Value must be at least 10 ETH.");
             data.fund(newAirline, msg.value);
-            success = data.confirmAirline(newAirline);
-
-            return(success);
+            data.confirmAirline(newAirline);
         }
 
    /**
     * @dev Register a future flight for insuring.
     *
     */  
-    function registerFlight (string flight)
+    function registerFlight (string flight, uint256 timestamp)
+        external
+        requireAirline
+        requireIsOperational
+        {
+            bytes32 key = getFlightKey(msg.sender, flight, timestamp);
+            flights[key].isRegistered = true;
+            flights[key].flight = flight;
+            flights[key].updatedTimestamp = timestamp;
+            flights[key].airline = msg.sender;
+            registeredFlights.push(key);
+
+            emit FlightAdded(msg.sender, flight, timestamp, key);
+        }
+
+    /**
+    * @dev Return flight registered at 'i' index of registeredFlights[]
+    *
+    */
+    function getFlight (uint i) 
+        external
+        view
+        returns (bytes32) 
+        {
+            return registeredFlights[i];
+        }
+
+    /**
+    * @dev Register a future flight for insuring.
+    *
+    */  
+    function buy (bytes32 key)
         external
         payable
         requireIsOperational
-        returns(bool success)
         {
-            require(msg.value <= 1 ether);
-            success = data.buy(flight, msg.sender, msg.value);
-            return(success);
+            require(msg.value <= 1 ether, "1 ETH is the max amount allowed.");
+            string flight = flights[key].flight;
+            data.buy(key, flight, msg.sender, msg.value);
+        }
+
+    /**
+    * @dev Pull funds from data and send them to the passenger
+    *
+    */  
+    function withdraw ()
+        external
+        requireIsOperational
+        returns(uint256 credit)
+        {
+            // Check that the sender is the owner of the policy
+            require(msg.sender == data.isCustomer(msg.sender));
+            data.withdraw(msg.sender);
+            msg.sender.transfer(credit);
+            return(credit);
         }
     
    /**
@@ -160,15 +217,18 @@ contract FlightSuretyApp {
     */  
     function processFlightStatus
         (
+            bytes32 key,
             address airline,
             string memory flight,
             uint256 timestamp,
             uint8 statusCode
         )
         internal
-        pure
+        requireIsOperational
         {
-
+            if ((statusCode >= 20) && (statusCode <= 50)) {
+                data.creditInsurees(key);
+            }
         }
 
 
@@ -298,7 +358,7 @@ contract FlightSuretyApp {
                 emit FlightStatusInfo(airline, flight, timestamp, statusCode);
 
                 // Handle flight status as appropriate
-                processFlightStatus(airline, flight, timestamp, statusCode);
+                processFlightStatus(key, airline, flight, timestamp, statusCode);
             }
         }
 
@@ -371,5 +431,8 @@ contract FlightSurityData {
     function fund (address, uint) external payable;
     function registerAirline (address) external returns(uint256);
     function confirmAirline (address) external returns(bool);
-    function buy (string, address, uint) external payable returns(bool);
+    function buy (bytes32, string, address, uint) external payable;
+    function isCustomer (address) view public returns (address);
+    function withdraw (address) external returns(uint256);
+    function creditInsurees (bytes32) external;
 }

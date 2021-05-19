@@ -129,4 +129,41 @@ contract('Flight Surety Tests', async (accounts) => {
     assert.equal(result2, 10000000000000000000, "Funds should be transfered to Data Contract's 'storeFunds'");
   });
 
+  it('(airline) creates a flight, and finds it in App contract', async () => {
+    
+    // ARRANGE
+    let newFlight = "A1234";
+
+    // ACT
+    try {
+        await config.flightSuretyApp.registerFlight(newFlight, 2, {from: config.firstAirline});
+    }
+    catch(e) {
+
+    }
+    let result = await config.flightSuretyApp.getFlight.call(0);
+    // ASSERT
+    assert.equal(result, 0xb5e822905dc940d2a7f4f3c76016121d3ccb3d56d3716865d2fc43417b6426d5, "Airline should have new flight registered in contract");
+  });
+
+  it('(airline) creates a flight, (customer) insures it', async () => {
+    
+    // ARRANGE
+    let newFlight = "A1234";
+    let passenger = config.testAddresses[6]
+    let newFlightKey = 0xb5e822905dc940d2a7f4f3c76016121d3ccb3d56d3716865d2fc43417b6426d5
+
+    // ACT
+    try {
+        await config.flightSuretyApp.registerFlight(newFlight, 2, {from: config.firstAirline});
+        await config.flightSuretyApp.buy(newFlightKey, {from: passenger, value: 1000000000000000000});
+    }
+    catch(e) {
+
+    }
+    let result = await config.flightSuretyData.checkFunds();
+    // ASSERT
+    assert.equal(result, 11000000000000000000, "Customer should have created new policy with 1 ETH deposited");
+  });
+
 });
