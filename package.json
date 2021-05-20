@@ -38,7 +38,7 @@
     "truffle": "^5.3.4",
     "truffle-hdwallet-provider": "1.0.2",
     "web3": "^1.2.4",
-    "webpack": "^4.35.2",
+    "webpack": "^4.20.2",
     "webpack-cli": "^3.3.6",
     "webpack-dev-server": "^3.11.2",
     "webpack-node-externals": "1.7.2"

@@ -125,7 +125,7 @@ export default class Contract {
         let payload = {
             airline: self.airlines[0],
             flight: flight,
-            timestamp: Math.floor(Date.now() / 1000)
+            timestamp: self.timestamp
         } 
         self.flightSuretyApp.methods
             .fetchFlightStatus(payload.airline, payload.flight, payload.timestamp)
