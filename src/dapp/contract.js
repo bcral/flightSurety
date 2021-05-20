@@ -51,7 +51,7 @@ export default class Contract {
         self.flightSuretyApp.methods
             .registerAirline(newAirline)
             .send({from: self.airlines[0]}, (error, result) => {
-                callback(error, newAirline);
+                callback(error, result);
             });
      }
 
@@ -102,7 +102,12 @@ export default class Contract {
         let amount = payment * 1000000000000000000;
         self.flightSuretyApp.methods
             .buy(flightKey)
-            .send({from: self.passengers[0], value: amount}, (error, result) => {
+            .send({
+                from: self.passengers[0], 
+                value: amount,                 
+                gas: 4712388,
+                gasPrice: 100000000000
+            }, (error, result) => {
                 callback(error, result);
             });
     }

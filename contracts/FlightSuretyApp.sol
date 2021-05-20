@@ -34,9 +34,19 @@ contract FlightSuretyApp {
         address airline;
     }
     mapping(bytes32 => Flight) private flights;
+
+    struct AirlineQueue {
+        uint votes;
+        bool paid;
+        bool accepted;
+    }
+    mapping(address => AirlineQueue) private airlines;
+
     bytes32[] registeredFlights;
     // instance of Data contract
     FlightSurityData data;
+    // check if consensus is required for airlines - defaults to false
+    bool private consensus;
 
     ////////////////////////////////////// EVENTS ////////////////////////////////////
 
@@ -90,6 +100,7 @@ contract FlightSuretyApp {
         {
             contractOwner = msg.sender;
             data = FlightSurityData(dataContract);
+            consensus = false;
         }
 
     /********************************************************************************************/
@@ -112,7 +123,6 @@ contract FlightSuretyApp {
             return registeredFlights.length;
         }
 
-
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
@@ -122,32 +132,46 @@ contract FlightSuretyApp {
     * @dev Add an airline to the registration queue
     *
     */   
-
     function registerAirline (address newAirline)
         external
         requireIsOperational
         requireAirline
-        returns(bool success, uint256 votes)
         {
-            //place vote
-            votes = data.registerAirline(newAirline);
-            success = data.confirmAirline(newAirline);
-            return (success, votes);
+            uint256 count = data.getAirlineCount();
+            if (consensus) {
+                airlines[newAirline].votes++;
+                if (airlines[newAirline].votes >= count.div(2)) {
+                    airlines[newAirline].accepted = true;
+                    if (airlines[newAirline].paid) {
+                        data.registerAirline(newAirline);
+                    }
+                } 
+
+            } else {
+                airlines[newAirline].accepted = true;
+                if (airlines[newAirline].paid) {
+                    data.registerAirline(newAirline);
+                }
+                consensus = data.checkConsensus();
+            }
         }
 
    /**
     * @dev Pay for an airline in the registration queue
     *
     */  
-
     function payAirlineFee (address newAirline)
         external
         payable
         requireIsOperational
         {
             require(msg.value >= 10 ether, "Value must be at least 10 ETH.");
-            data.fund(newAirline, msg.value);
-            data.confirmAirline(newAirline);
+            data.fund.value(msg.value)();
+            airlines[newAirline].paid = true;
+
+            if (airlines[newAirline].accepted) {
+                data.registerAirline(newAirline);
+            }
         }
 
    /**
@@ -192,7 +216,7 @@ contract FlightSuretyApp {
         {
             require(msg.value <= 1 ether, "1 ETH is the max amount allowed.");
             string flight = flights[key].flight;
-            data.buy(key, flight, msg.sender, msg.value);
+            data.buy.value(msg.value)(key, flight, msg.sender, msg.value);
         }
 
     /**
@@ -426,13 +450,14 @@ contract FlightSuretyApp {
 
 contract FlightSurityData {
     function isOperational () public view returns(bool);
-    function isAirline (address) public view  returns (bool);
-    function countAirlines () public view returns (uint);
-    function fund (address, uint) external payable;
-    function registerAirline (address) external returns(uint256);
-    function confirmAirline (address) external returns(bool);
-    function buy (bytes32, string, address, uint) external payable;
-    function isCustomer (address) view public returns (address);
+    function isAirline (address) public view returns(bool);
+    function countAirlines () public view returns(uint);
+    function checkConsensus () public returns (bool); 
+    function fund () external payable;
+    function registerAirline (address) external;
+    function buy (bytes32, string, address, uint256) external payable;
+    function isCustomer (address) view public returns(address);
     function withdraw (address) external returns(uint256);
     function creditInsurees (bytes32) external;
+    function getAirlineCount () public view returns(uint256); 
 }

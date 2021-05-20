@@ -21,7 +21,7 @@ import './flightsurety.css';
             let newAirline = DOM.elid('airline-add').value;
             // Write transaction
             contract.registerAirline(newAirline, (error, result) => {
-                display('New Airline', '', [ { label: 'New Airline Submitted/Voted For:', error: error, value: result} ]);
+                display('New Airline', '', [ { label: 'New Airline Submitted/Voted For:', error: error, value: result.success + ', ' + result.votes} ]);
                 console.log(error, result);
             });
         });
