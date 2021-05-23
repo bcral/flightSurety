@@ -13,8 +13,8 @@ export default class Contract {
         this.airlines = [];
         this.passengers = [];
         this.metamaskAccountID;
-        // Arbitrary number, since none of these matter.
-        this.timestamp = 2;
+        // Arbitrary number, since none of these matter for testing.
+        this.timestamp = Math.floor(Date.now() / 1000);
         this.displayFlights = [];
     }
 
@@ -50,8 +50,12 @@ export default class Contract {
         let self = this;
         self.flightSuretyApp.methods
             .registerAirline(newAirline)
-            .send({from: self.airlines[0]}, (error, result) => {
-                callback(error, result);
+            .send({
+                from: self.airlines[0],
+                gas: 4712388,
+                gasPrice: 100000000000
+            }, (error, result) => {
+                callback(error, newAirline);
             });
      }
 
@@ -61,7 +65,12 @@ export default class Contract {
         const fee = 10000000000000000000;
         self.flightSuretyApp.methods
             .payAirlineFee(airline)
-            .send({from: self.airlines[0], value: fee}, (error, result) => {
+            .send({
+                from: self.airlines[0],
+                gas: 4712388,
+                gasPrice: 100000000000, 
+                value: fee
+            }, (error, result) => {
                 callback(error, airline);
             });
     }
@@ -83,15 +92,17 @@ export default class Contract {
     // Function for retrieving registered flights and finding the goddamn key
     async getFlights(callback) {
         let self = this;
-        let length = await self.flightSuretyApp.methods.returnFlightsLength().call();
+        let total = await self.flightSuretyApp.methods.returnFlightsLength().call();
         self.displayFlights = [];
 
         // Loop that writes flights to local array, because you can't just return them
-        for (let i = 0; i < length; i++) {
-            // Get key from array of flight keys
-            let flight = await self.flightSuretyApp.methods.getFlight(i).call({from: self.owner}, callback);
-            // Write flight values to local variable
-            self.displayFlights.push(flight);
+        for (let i = 0; i < total; i++) {
+            // Get flight info
+            let returnFlights = await self.flightSuretyApp.methods.getFlight(i).call({from: self.owner}, (error, result) => {
+                callback(error, result);
+            });
+            // Write flight values to local array
+            self.displayFlights.push(returnFlights);
         }
         return self.displayFlights;
     }
@@ -117,7 +128,13 @@ export default class Contract {
         let self = this;
         self.flightSuretyApp.methods
             .withdraw()
-            .send({from: self.passengers[0]}, callback);
+            .send({
+                from: self.passengers[0],
+                gas: 4712388,
+                gasPrice: 100000000000
+            }, (error, result) => {
+                callback(error, result);
+            });
     }
 
     fetchFlightStatus(flight, callback) {

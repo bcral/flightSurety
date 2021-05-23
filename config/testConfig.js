@@ -25,6 +25,7 @@ var Config = async function(accounts) {
 
     let flightSuretyData = await FlightSuretyData.new(firstAirline);
     let flightSuretyApp = await FlightSuretyApp.new(flightSuretyData.address);
+    let timestamp = Math.floor(Date.now() / 1000);
 
     
     return {
@@ -33,7 +34,8 @@ var Config = async function(accounts) {
         weiMultiple: (new BigNumber(10)).pow(18),
         testAddresses: testAddresses,
         flightSuretyData: flightSuretyData,
-        flightSuretyApp: flightSuretyApp
+        flightSuretyApp: flightSuretyApp,
+        timestamp: timestamp
     }
 }
 

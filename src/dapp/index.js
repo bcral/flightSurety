@@ -21,7 +21,7 @@ import './flightsurety.css';
             let newAirline = DOM.elid('airline-add').value;
             // Write transaction
             contract.registerAirline(newAirline, (error, result) => {
-                display('New Airline', '', [ { label: 'New Airline Submitted/Voted For:', error: error, value: result.success + ', ' + result.votes} ]);
+                display('New Airline', '', [ { label: 'New Airline Submitted/Voted For:', error: error, value: result} ]);
                 console.log(error, result);
             });
         });
@@ -59,9 +59,12 @@ import './flightsurety.css';
         // Return list of flights to display
         DOM.elid('get-flights').addEventListener('click', () => {
             // Write transaction
-            result = contract.getFlights((error, result) => {
-            displayFlights([ { label: 'Flight:', error: error, value: result} ]);
-            console.log(result);
+            contract.getFlights((error, result) => {
+                displayFlights([ { label: 'Key:', error: error, value: result[0] }, 
+                                { label: 'Flight:', value: result[1] },
+                                { label: 'Airline:', value: result[2] },
+                                { label: 'Status:', value: result[3] } ]);
+                console.log(error, result);
             });
         });
 
@@ -69,6 +72,7 @@ import './flightsurety.css';
         DOM.elid('withdraw').addEventListener('click', () => {
             // Write transaction
             contract.withdraw((error, result) => {
+                displayWithdrawal([ { label: 'Credited - Trans ID: ', error: error, value: result }]);
                 console.log(error, result);
             });
         });
@@ -93,7 +97,9 @@ function display(title, description, results) {
     let section = DOM.section();
     section.appendChild(DOM.h2(title));
     section.appendChild(DOM.h5(description));
+
     results.map((result) => {
+        
         let row = section.appendChild(DOM.div({className:'row'}));
         row.appendChild(DOM.div({className: 'col-sm-4 field'}, result.label));
         row.appendChild(DOM.div({className: 'col-sm-8 field-value'}, result.error ? String(result.error) : String(result.value)));
@@ -105,6 +111,8 @@ function display(title, description, results) {
 function displayFlights(results) {
     let displayDiv = DOM.elid("flight-wrapper");
     let section = DOM.section();
+    section.classList.add('flight-result');
+
     results.map((result) => {
         let row = section.appendChild(DOM.div({className:'row'}));
         row.appendChild(DOM.div({className: 'col-sm-4 field'}, result.label));
@@ -112,5 +120,18 @@ function displayFlights(results) {
         section.appendChild(row);
     })
     displayDiv.append(section);
+}
 
+function displayWithdrawal(results) {
+    let displayDiv = DOM.elid("withdraw-wrapper");
+    let section = DOM.section();
+    section.classList.add('withdrawal-result');
+
+    results.map((result) => {
+        let row = section.appendChild(DOM.div({className:'row'}));
+        row.appendChild(DOM.div({className: 'col-sm-4 field'}, result.label));
+        row.appendChild(DOM.div({className: 'col-sm-8 field-value'}, result.error ? String(result.error) : String(result.value)));
+        section.appendChild(row);
+    })
+    displayDiv.append(section);
 }

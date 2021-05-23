@@ -16,12 +16,6 @@ body {
     border: solid 2px #fff;
     padding: 15px;
     margin: 15px;
-}
-
-#flight-wrapper {
-    border: solid 2px #fff;
-    padding: 15px;
-    margin: 15px;
     overflow-wrap: break-word;
 }
 

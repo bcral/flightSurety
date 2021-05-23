@@ -80,7 +80,7 @@ contract FlightSuretyData {
     modifier requireCredit(address _address) 
         {
             bytes32 key = policies[_address].key;
-            require(credits[key] == true, "There is no credit for this flight, on this account");
+            require(credits[key] == true, "There is no credit for this flight on this account");
             _;
         }
 
@@ -130,24 +130,9 @@ contract FlightSuretyData {
             return check;
         }
 
-    function checkConsensus() external returns (bool)
-        {
-            uint count = countAirlines();
-            if (count > 3) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-
     function checkFunds() public view returns (uint) 
         {
             return storedFunds;
-        }
-
-    function getAirlineCount() public view returns (uint256) 
-        {
-            return airlineCount;
         }
 
     /********************************************************************************************/
@@ -200,14 +185,16 @@ contract FlightSuretyData {
         external
         requireIsOperational
         requireCredit(passenger)
+        returns(uint256 credited)
         {
             require(policies[passenger].owner == passenger);
-            require(policies[passenger].amount > 0);
+            require(policies[passenger].amount > 0, "You don't currently have a policy.");
             uint256 deposit = policies[passenger].amount;
             uint256 credit = deposit.mul(3).div(2);
             require(storedFunds >= credit);
             policies[passenger].amount = 0;
             passenger.transfer(credit);
+            return credited = credit;
         }
         
 

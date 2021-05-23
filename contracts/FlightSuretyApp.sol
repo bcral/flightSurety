@@ -36,7 +36,7 @@ contract FlightSuretyApp {
     mapping(bytes32 => Flight) private flights;
 
     struct AirlineQueue {
-        uint votes;
+        uint256 votes;
         bool paid;
         bool accepted;
     }
@@ -100,7 +100,6 @@ contract FlightSuretyApp {
         {
             contractOwner = msg.sender;
             data = FlightSurityData(dataContract);
-            consensus = false;
         }
 
     /********************************************************************************************/
@@ -123,6 +122,22 @@ contract FlightSuretyApp {
             return registeredFlights.length;
         }
 
+    function returnAirlineCount ()
+        public
+        view
+        returns(uint) 
+        {
+            return data.countAirlines();
+        }
+
+    function returnFlightStatus (bytes32 key)
+        public
+        view
+        returns(uint8) 
+        {
+            return flights[key].statusCode;
+        }
+
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
@@ -137,8 +152,8 @@ contract FlightSuretyApp {
         requireIsOperational
         requireAirline
         {
-            uint256 count = data.getAirlineCount();
-            if (consensus) {
+            uint256 count = data.countAirlines();
+            if (count >= 4) {
                 airlines[newAirline].votes++;
                 if (airlines[newAirline].votes >= count.div(2)) {
                     airlines[newAirline].accepted = true;
@@ -148,11 +163,11 @@ contract FlightSuretyApp {
                 } 
 
             } else {
+                airlines[newAirline].votes = 0;
                 airlines[newAirline].accepted = true;
                 if (airlines[newAirline].paid) {
                     data.registerAirline(newAirline);
                 }
-                consensus = data.checkConsensus();
             }
         }
 
@@ -188,6 +203,7 @@ contract FlightSuretyApp {
             flights[key].flight = flight;
             flights[key].updatedTimestamp = timestamp;
             flights[key].airline = msg.sender;
+            flights[key].statusCode = STATUS_CODE_UNKNOWN;
             registeredFlights.push(key);
 
             emit FlightAdded(msg.sender, flight, timestamp, key);
@@ -200,9 +216,10 @@ contract FlightSuretyApp {
     function getFlight (uint i) 
         external
         view
-        returns (bytes32) 
+        returns (bytes32, string, address, uint8) 
         {
-            return registeredFlights[i];
+            bytes32 key = registeredFlights[i];
+            return(key, flights[key].flight, flights[key].airline, flights[key].statusCode);
         }
 
     /**
@@ -215,7 +232,7 @@ contract FlightSuretyApp {
         requireIsOperational
         {
             require(msg.value <= 1 ether, "1 ETH is the max amount allowed.");
-            string flight = flights[key].flight;
+            string memory flight = flights[key].flight;
             data.buy.value(msg.value)(key, flight, msg.sender, msg.value);
         }
 
@@ -230,18 +247,21 @@ contract FlightSuretyApp {
         {
             // Check that the sender is the owner of the policy
             require(msg.sender == data.isCustomer(msg.sender));
-            data.withdraw(msg.sender);
-            msg.sender.transfer(credit);
-            return(credit);
+            credit = data.withdraw(msg.sender);
+            if (credit > 0) {
+                emit Withdrawal(credit, msg.sender);
+            }
+            return credit;
         }
     
+    event StatusUpdate(uint8 statusCode);
+
    /**
     * @dev Called after oracle has updated flight status
     *
     */  
     function processFlightStatus
         (
-            bytes32 key,
             address airline,
             string memory flight,
             uint256 timestamp,
@@ -250,9 +270,14 @@ contract FlightSuretyApp {
         internal
         requireIsOperational
         {
+            bytes32 key = getFlightKey(airline, flight, timestamp);
+
+            flights[key].statusCode = statusCode;
             if ((statusCode >= 20) && (statusCode <= 50)) {
                 data.creditInsurees(key);
             }
+         
+            emit StatusUpdate(statusCode);
         }
 
 
@@ -316,6 +341,8 @@ contract FlightSuretyApp {
     event FlightStatusInfo(address airline, string flight, uint256 timestamp, uint8 status);
 
     event OracleReport(address airline, string flight, uint256 timestamp, uint8 status);
+
+    event Withdrawal(uint256 credit, address customer);
 
     // Event fired when flight status request is submitted
     // Oracles track this and if they have a matching index
@@ -382,7 +409,7 @@ contract FlightSuretyApp {
                 emit FlightStatusInfo(airline, flight, timestamp, statusCode);
 
                 // Handle flight status as appropriate
-                processFlightStatus(key, airline, flight, timestamp, statusCode);
+                processFlightStatus(airline, flight, timestamp, statusCode);
             }
         }
 
@@ -452,12 +479,10 @@ contract FlightSurityData {
     function isOperational () public view returns(bool);
     function isAirline (address) public view returns(bool);
     function countAirlines () public view returns(uint);
-    function checkConsensus () public returns (bool); 
     function fund () external payable;
     function registerAirline (address) external;
     function buy (bytes32, string, address, uint256) external payable;
     function isCustomer (address) view public returns(address);
     function withdraw (address) external returns(uint256);
     function creditInsurees (bytes32) external;
-    function getAirlineCount () public view returns(uint256); 
 }
